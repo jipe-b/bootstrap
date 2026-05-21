@@ -34,10 +34,7 @@ else
   ok "Installed"
 fi
 
-# ── 3. Tailscale, age, chezmoi ───────────────────────────────────────────────
-# Tailscale: required before chezmoi init (NAS only reachable via Tailscale)
-# age: required before chezmoi apply (decrypts SSH keys in the repo)
-# chezmoi handles the rest (full Brewfile, dotfiles, packages)
+# ── 3. Core tools ─────────────────────────────────────────────────────────────
 step "age"
 if command -v age &>/dev/null; then
   ok "Already installed"
@@ -66,13 +63,13 @@ info "1. Connect Tailscale"
 echo "      Open Tailscale from Applications and log in."
 echo ""
 
-info "2. Copy your age key from the NAS (requires Tailscale up)"
+info "2. Copy your age key"
 echo "      mkdir -p ~/.config/chezmoi"
-echo "      ssh jipe@100.96.122.2 'cat ~/config/chezmoi/key.txt' > ~/.config/chezmoi/key.txt"
+echo "      ssh <user>@<nas-ip> 'cat ~/config/chezmoi/key.txt' > ~/.config/chezmoi/key.txt"
 echo "      chmod 600 ~/.config/chezmoi/key.txt"
 echo "      age-keygen -y ~/.config/chezmoi/key.txt  # copy public key"
 echo ""
 
-info "3. Init chezmoi from your NAS repo"
-echo "      chezmoi init --apply ssh://jipe@100.96.122.2/volume1/Git/dotfiles.git"
+info "3. Init chezmoi"
+echo "      chezmoi init --apply ssh://<user>@<nas-ip>/<path-to-repo>.git"
 echo ""
