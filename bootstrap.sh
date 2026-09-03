@@ -44,23 +44,26 @@ next_steps() {
 # ── Next steps: Linux ────────────────────────────────────────────────────────
 # dotfiles' Forgejo key is chezmoi-managed and shared across machines -- can't
 # be used for this very first clone. This script already generated a
-# device-dedicated key above; register its public half manually, then use it
-# for a one-time clone via GIT_SSH_COMMAND (never needs a permanent SSH config
-# entry -- chezmoi's own dot_ssh/config.tmpl takes over after apply).
+# temporary key at that exact path above; register its public half manually,
+# use it once via GIT_SSH_COMMAND to clone, then chezmoi apply overwrites it
+# with the real shared key and ~/.ssh/config just works from then on.
 linux_next_steps() {
   local forgejo_key="$1"
 
   next_steps_common
 
-  info "3. Register this device's Forgejo SSH key"
+  info "3. Register the temporary Forgejo SSH key (for this one clone only)"
   echo "      https://forge.int.jipe-homelab.fr → Settings → SSH/GPG Keys → Add Key"
   echo "      Paste the contents of: ${forgejo_key}.pub"
+  echo "      Safe to remove it there again once step 4 below succeeds."
   echo ""
 
   info "4. Init chezmoi"
   echo "      GIT_SSH_COMMAND=\"ssh -i ${forgejo_key} -o IdentitiesOnly=yes\" \\"
   echo "        chezmoi init --apply ssh://git@forge.int.jipe-homelab.fr:222/0xJipe/dotfiles.git"
   echo "      Profile prompt → perso"
+  echo "      chezmoi apply overwrites ${forgejo_key} with the real shared"
+  echo "      key from the repo -- no manual SSH config needed afterward."
   echo ""
 }
 
@@ -195,18 +198,22 @@ elif [[ "$(uname)" == "Linux" ]]; then
     exit 1
   fi
 
-  # ── Forgejo SSH key (per-device, not chezmoi-managed) ──────────────────────
-  # dotfiles' own Forgejo key is shared across every machine that applies the
-  # repo -- can't be used to clone dotfiles in the first place (chicken-and-
-  # egg). Generate a key dedicated to this device instead; register its
-  # public half on Forgejo manually before the chezmoi init step below.
-  step "Forgejo SSH key"
-  forgejo_key="$HOME/.ssh/keys/forgejo-$(hostname -s)"
+  # ── Forgejo SSH key (temporary, bootstraps the first clone only) ───────────
+  # dotfiles' own Forgejo key (dot_ssh/config.tmpl's IdentityFile) is
+  # ~/.ssh/keys/forgejo-perso -- shared across every machine, encrypted in
+  # the repo, so it doesn't exist yet on a machine that hasn't cloned the
+  # repo (chicken-and-egg). Generating a throwaway key at that *exact* path
+  # means chezmoi apply overwrites it with the real decrypted shared key
+  # once it succeeds -- ~/.ssh/config then just works with no further setup,
+  # same as every other machine. Register the *temporary* public key on
+  # Forgejo for this one clone; safe to remove it there afterward.
+  step "Forgejo SSH key (temporary)"
+  forgejo_key="$HOME/.ssh/keys/forgejo-perso"
   if [[ -f "$forgejo_key" ]]; then
     ok "Already exists ($forgejo_key)"
   else
     mkdir -p ~/.ssh/keys
-    ssh-keygen -t ed25519 -C "forgejo-$(hostname -s)" -f "$forgejo_key" -N ""
+    ssh-keygen -t ed25519 -C "bootstrap-$(hostname -s)" -f "$forgejo_key" -N ""
     ok "Generated ($forgejo_key)"
   fi
 
