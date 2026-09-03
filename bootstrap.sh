@@ -126,16 +126,11 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v chezmoi &>/dev/null; then
       ok "Already installed"
     else
-      # CachyOS's cachyos-extra-v3 repo mirrors every package in Arch's own
-      # extra repo (rebuilt for x86-64-v3) -- pacman can't auto-pick between
-      # the two identically-named providers and blocks waiting for an
-      # interactive choice under --noconfirm. Pin the repo explicitly,
-      # preferring the CachyOS-optimized build when that repo exists.
-      if grep -q '^\[cachyos-extra-v3\]' /etc/pacman.conf 2>/dev/null; then
-        sudo pacman -S --needed --noconfirm cachyos-extra-v3/chezmoi && ok "Installed"
-      else
-        sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
-      fi
+      # Confirmed live (2026-09-03): chezmoi is a static Go binary, not
+      # rebuilt into cachyos-extra-v3 (that repo only mirrors packages that
+      # actually benefit from x86-64-v3 compiler flags) -- plain `extra`
+      # resolves cleanly here, no provider clash for this specific package.
+      sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
     fi
 
     step "yay (AUR helper)"
