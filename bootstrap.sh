@@ -11,8 +11,8 @@ step() { printf "\n${BOLD}▶ $1${RESET}\n"; }
 ok()   { printf "${GREEN}✓ $1${RESET}\n"; }
 info() { printf "${CYAN}  $1${RESET}\n"; }
 
-# ── Next steps (shared) ─────────────────────────────────────────────────────
-next_steps() {
+# ── Next steps: Netbird + age key (shared by both OSes) ────────────────────
+next_steps_common() {
   printf "\n${BOLD}━━━ Next steps (manual) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n\n"
 
   info "1. Connect Netbird"
@@ -29,10 +29,38 @@ next_steps() {
   echo "      chmod 600 ~/.config/chezmoi/key.txt"
   echo "      age-keygen -y ~/.config/chezmoi/key.txt  # copy public key"
   echo ""
+}
+
+# ── Next steps: macOS ────────────────────────────────────────────────────────
+next_steps() {
+  next_steps_common
 
   info "3. Init chezmoi"
   echo "      chezmoi init --apply <repo-url>"
   echo "      Profile prompt → work / server / perso, whichever fits this machine"
+  echo ""
+}
+
+# ── Next steps: Linux ────────────────────────────────────────────────────────
+# dotfiles' Forgejo key is chezmoi-managed and shared across machines -- can't
+# be used for this very first clone. This script already generated a
+# device-dedicated key above; register its public half manually, then use it
+# for a one-time clone via GIT_SSH_COMMAND (never needs a permanent SSH config
+# entry -- chezmoi's own dot_ssh/config.tmpl takes over after apply).
+linux_next_steps() {
+  local forgejo_key="$1"
+
+  next_steps_common
+
+  info "3. Register this device's Forgejo SSH key"
+  echo "      https://forge.int.jipe-homelab.fr → Settings → SSH/GPG Keys → Add Key"
+  echo "      Paste the contents of: ${forgejo_key}.pub"
+  echo ""
+
+  info "4. Init chezmoi"
+  echo "      GIT_SSH_COMMAND=\"ssh -i ${forgejo_key} -o IdentitiesOnly=yes\" \\"
+  echo "        chezmoi init --apply ssh://git@forge.int.jipe-homelab.fr:222/0xJipe/dotfiles.git"
+  echo "      Profile prompt → perso"
   echo ""
 }
 
@@ -98,7 +126,16 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v chezmoi &>/dev/null; then
       ok "Already installed"
     else
-      sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
+      # CachyOS's cachyos-extra-v3 repo mirrors every package in Arch's own
+      # extra repo (rebuilt for x86-64-v3) -- pacman can't auto-pick between
+      # the two identically-named providers and blocks waiting for an
+      # interactive choice under --noconfirm. Pin the repo explicitly,
+      # preferring the CachyOS-optimized build when that repo exists.
+      if grep -q '^\[cachyos-extra-v3\]' /etc/pacman.conf 2>/dev/null; then
+        sudo pacman -S --needed --noconfirm cachyos-extra-v3/chezmoi && ok "Installed"
+      else
+        sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
+      fi
     fi
 
     step "yay (AUR helper)"
@@ -163,7 +200,23 @@ elif [[ "$(uname)" == "Linux" ]]; then
     exit 1
   fi
 
-  next_steps
+  # ── Forgejo SSH key (per-device, not chezmoi-managed) ──────────────────────
+  # dotfiles' own Forgejo key is shared across every machine that applies the
+  # repo -- can't be used to clone dotfiles in the first place (chicken-and-
+  # egg). Generate a key dedicated to this device instead; register its
+  # public half on Forgejo manually before the chezmoi init step below.
+  step "Forgejo SSH key"
+  forgejo_key="$HOME/.ssh/keys/forgejo-$(hostname -s)"
+  if [[ -f "$forgejo_key" ]]; then
+    ok "Already exists ($forgejo_key)"
+  else
+    mkdir -p ~/.ssh/keys
+    ssh-keygen -t ed25519 -C "forgejo-$(hostname -s)" -f "$forgejo_key" -N ""
+    ok "Generated ($forgejo_key)"
+  fi
+
+  linux_next_steps "$forgejo_key"
+  exit 0
 
 else
   echo "Unsupported OS: $(uname). This script supports macOS and Linux (Arch-based or Debian-based). Aborting."
