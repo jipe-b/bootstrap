@@ -16,7 +16,11 @@ next_steps() {
   printf "\n${BOLD}━━━ Next steps (manual) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n\n"
 
   info "1. Connect Netbird"
-  echo "      Open Netbird and log in."
+  echo "      A brand-new device can't use interactive browser login (/oauth2"
+  echo "      is mesh-only, unreachable before you're connected) — use a setup"
+  echo "      key instead, generated from an already-connected device:"
+  echo "      https://netbird.jipe-homelab.fr → Setup Keys"
+  echo "      netbird up --setup-key <KEY>"
   echo ""
 
   info "2. Copy your age key"
@@ -94,7 +98,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v chezmoi &>/dev/null; then
       ok "Already installed"
     else
-      sh -c "$(curl -fsLS get.chezmoi.io)" && ok "Installed"
+      sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
     fi
 
     step "yay (AUR helper)"
@@ -129,7 +133,15 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v chezmoi &>/dev/null; then
       ok "Already installed"
     else
-      sh -c "$(curl -fsLS get.chezmoi.io)" && ok "Installed"
+      # Debian has no chezmoi apt package -- official install script instead.
+      # It installs to ./bin by default (relative to CWD, not on PATH), so
+      # install to a scratch dir first and move the binary somewhere
+      # predictable rather than relying on wherever this script was run from.
+      tmpdir="$(mktemp -d)"
+      sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$tmpdir"
+      sudo mv "$tmpdir/chezmoi" /usr/local/bin/chezmoi
+      rm -rf "$tmpdir"
+      ok "Installed"
     fi
 
     step "Netbird"
