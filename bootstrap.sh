@@ -119,7 +119,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v age &>/dev/null; then
       ok "Already installed"
     else
-      sudo pacman -S --needed --noconfirm age && ok "Installed"
+      sudo pacman -S --needed age && ok "Installed"
     fi
 
     step "chezmoi"
@@ -130,14 +130,14 @@ elif [[ "$(uname)" == "Linux" ]]; then
       # rebuilt into cachyos-extra-v3 (that repo only mirrors packages that
       # actually benefit from x86-64-v3 compiler flags) -- plain `extra`
       # resolves cleanly here, no provider clash for this specific package.
-      sudo pacman -S --needed --noconfirm chezmoi && ok "Installed"
+      sudo pacman -S --needed chezmoi && ok "Installed"
     fi
 
     step "yay (AUR helper)"
     if command -v yay &>/dev/null; then
       ok "Already installed"
     else
-      sudo pacman -S --needed --noconfirm base-devel git
+      sudo pacman -S --needed base-devel git
       tmpdir="$(mktemp -d)"
       git clone https://aur.archlinux.org/yay.git "$tmpdir/yay"
       (cd "$tmpdir/yay" && makepkg -si --noconfirm)
@@ -149,7 +149,7 @@ elif [[ "$(uname)" == "Linux" ]]; then
     if command -v netbird-ui &>/dev/null; then
       ok "Already installed"
     else
-      yay -S --needed --noconfirm netbird netbird-ui && ok "Installed"
+      yay -S --needed netbird netbird-ui && ok "Installed"
     fi
 
   elif command -v apt-get &>/dev/null; then
