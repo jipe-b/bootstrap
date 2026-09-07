@@ -76,7 +76,10 @@ if [[ "$(uname)" == "Darwin" ]]; then
     xcode-select --install 2>/dev/null || true
     printf "\n${YELLOW}  A dialog has opened — click Install, then come back here.${RESET}\n"
     printf "${YELLOW}  Press Enter when done...${RESET} "
-    read -r
+    # Script runs via `curl | bash`, so stdin is the pipe, not the keyboard --
+    # a plain `read` sees EOF and returns instantly. Read from the controlling
+    # terminal explicitly so it actually waits.
+    read -r < /dev/tty
     xcode-select -p &>/dev/null || { echo "Xcode CLI tools not found, aborting."; exit 1; }
     ok "Installed"
   fi
