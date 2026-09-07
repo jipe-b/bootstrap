@@ -15,19 +15,25 @@ info() { printf "${CYAN}  $1${RESET}\n"; }
 next_steps_common() {
   printf "\n${BOLD}━━━ Next steps (manual) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}\n\n"
 
-  info "1. Connect Netbird"
-  echo "      A brand-new device can't use interactive browser login (/oauth2"
-  echo "      is mesh-only, unreachable before you're connected) — use a setup"
-  echo "      key instead, generated from an already-connected device:"
-  echo "      https://netbird.jipe-homelab.fr → Setup Keys"
-  echo "      netbird up --setup-key <KEY>"
-  echo ""
-
-  info "2. Copy your age key"
+  info "1. Retrieve your age private key"
+  echo "      Stored in Vaultwarden (org 'homelab') — publicly reachable, no"
+  echo "      Netbird needed yet: https://vault.jipe-homelab.fr"
   echo "      mkdir -p ~/.config/chezmoi"
-  echo "      ssh <user>@<nas-ip> 'cat ~/config/chezmoi/key.txt' > ~/.config/chezmoi/key.txt"
+  echo "      # paste/download the key contents to ~/.config/chezmoi/key.txt"
   echo "      chmod 600 ~/.config/chezmoi/key.txt"
   echo "      age-keygen -y ~/.config/chezmoi/key.txt  # copy public key"
+  echo ""
+
+  info "2. Connect Netbird"
+  echo "      First, switch the default profile to self-hosted: open netbird-ui →"
+  echo "      edit the default profile → set the management URL to"
+  echo "      netbird.jipe-homelab.fr (it defaults to Netbird's public SaaS)."
+  echo ""
+  echo "      Then connect — a brand-new device can't use interactive browser"
+  echo "      login (/oauth2 is mesh-only, unreachable before you're connected) —"
+  echo "      use a setup key instead, generated from an already-connected device:"
+  echo "      https://netbird.jipe-homelab.fr → Setup Keys"
+  echo "      netbird up --setup-key <KEY>"
   echo ""
 }
 
@@ -58,6 +64,8 @@ next_steps() {
   info "3. Register this device's Forgejo SSH key"
   echo "      https://forge.int.jipe-homelab.fr → Settings → SSH/GPG Keys → Add Key"
   echo "      Paste the contents of: ${forgejo_key}.pub"
+  echo "      Need the Forgejo password to log in? Bitwarden app isn't installed yet"
+  echo "      on a fresh machine — use the web vault: https://vault.jipe-homelab.fr"
   echo ""
 
   info "4. Init chezmoi"
@@ -113,6 +121,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
   if brew list --cask netbirdio/tap/netbird-ui &>/dev/null; then
     ok "Already installed"
   else
+    # Third-party tap cask (and its netbird formula dependency) -- Homebrew
+    # refuses to install either on a machine that hasn't trusted them yet.
+    # `brew trust` is idempotent (no-ops with exit 0 if already trusted), so
+    # no need to check state first.
+    brew trust --cask netbirdio/tap/netbird-ui
+    brew trust --formula netbirdio/tap/netbird
     brew install --cask netbirdio/tap/netbird-ui && ok "Installed"
   fi
 
